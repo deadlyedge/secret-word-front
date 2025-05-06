@@ -17,11 +17,11 @@ export const MakeCard = () => {
 	const [processedImage, setProcessedImage] = useState<string>("")
 	const [descriptorsArray, setDescriptorsArray] = useState<number[][]>([])
 
-	const [devices, setDevices] = useState([])
-	const [deviceId, setDeviceId] = useState({})
+	const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
+	const [deviceId, setDeviceId] = useState<string | undefined>(undefined)
 
 	const handleDevices = useCallback(
-		(mediaDevices) =>
+		(mediaDevices: MediaDeviceInfo[]) =>
 			setDevices(mediaDevices.filter(({ kind }) => kind === "videoinput")),
 		[],
 	)
@@ -112,7 +112,10 @@ export const MakeCard = () => {
 					<div className="absolute bottom-0 w-full mb-2 z-50">
 						{captureStarted === false ? (
 							<>
-								<Button onClick={switchCapture} size="lg" className="mt-2 rounded-full bg-green-300 hover:bg-green-400">
+								<Button
+									onClick={switchCapture}
+									size="lg"
+									className="mt-2 rounded-full bg-linear-to-tl from-yellow-400 to-green-300 hover:bg-green-600">
 									<ProjectorIcon />
 									Start processing
 								</Button>
@@ -122,7 +125,10 @@ export const MakeCard = () => {
 								{/* {devices.map((device, key) => (
 							<p key={device.deviceId}>{device.label || `Device ${key + 1}`}</p>
 						))} */}
-								<Button onClick={switchCapture} size="lg" className="mt-2 rounded-full bg-linear-to-tl from-red-500 to-blue-600 animate-pulse hover:bg-red-600">
+								<Button
+									onClick={switchCapture}
+									size="lg"
+									className="mt-2 rounded-full bg-linear-to-tl from-red-500 to-blue-600 animate-pulse hover:bg-red-600">
 									<CameraIcon />
 									Stop processing
 								</Button>

@@ -6,23 +6,9 @@ import Webcam from "react-webcam"
 import { Button } from "./ui/button"
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "./ui/card"
 import { Textarea } from "./ui/textarea"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { processImageWithORB } from "@/lib/orbProcessor"
-
-// type MakeCardProps = {
-// 	canvasRef?: React.RefObject<HTMLCanvasElement | null>
-// 	webcamRef?: React.RefObject<Webcam | null>
-// 	captureStarted: boolean
-// 	descriptorsArray: number[][]
-// 	processedImage?: string | null
-// 	switchCapture: () => void
-// }
-
-// const defaultVideoConstraints = {
-// 	width: 640,
-// 	height: 480,
-// 	facingMode: "user",
-// }
+import { SelectCamera } from "./SelectCamera"
 
 export const MakeCard = () => {
 	const webcamRef = useRef<Webcam>(null)
@@ -30,6 +16,15 @@ export const MakeCard = () => {
 	const [captureStarted, setCaptureStarted] = useState(false)
 	const [processedImage, setProcessedImage] = useState<string>("")
 	const [descriptorsArray, setDescriptorsArray] = useState<number[][]>([])
+
+	const [devices, setDevices] = useState([])
+	const [deviceId, setDeviceId] = useState({})
+
+	const handleDevices = useCallback(
+		(mediaDevices) =>
+			setDevices(mediaDevices.filter(({ kind }) => kind === "videoinput")),
+		[],
+	)
 
 	useEffect(() => {
 		let intervalId: NodeJS.Timeout | null = null
@@ -61,26 +56,38 @@ export const MakeCard = () => {
 		}
 	}, [captureStarted])
 
+	useEffect(() => {
+		navigator.mediaDevices.enumerateDevices().then(handleDevices)
+	}, [handleDevices])
+
+	useEffect(() => {
+		setDeviceId(devices[0]?.deviceId)
+	}, [devices])
+
 	const switchCapture = () => setCaptureStarted(!captureStarted)
 
 	return (
-		<Card className="w-full m-4 lg:w-1/2 lg:mx-auto">
+		<Card className="w-full h-svh m-4 lg:w-1/2 lg:h-full lg:mx-auto">
 			<CardHeader>
 				<CardTitle>ORB Feature Detection</CardTitle>
 			</CardHeader>
 
 			<CardContent className="">
-				<div className="relative w-full h-fit aspect-4/3 rounded-md">
+				<div className="relative w-full h-fit aspect-9/16 rounded-md text-center">
 					<canvas ref={canvasRef} style={{ display: "none" }} />
 					<Webcam
 						audio={false}
 						// height={480}
 						// width={640}
 						screenshotFormat="image/jpeg"
-						// videoConstraints={defaultVideoConstraints}
+						videoConstraints={{
+							deviceId,
+							facingMode: "environment",
+							aspectRatio: 9 / 16,
+						}}
 						ref={webcamRef}
 						className={cn(
-							"rounded-md w-full absolute top-0 left-0 z-50",
+							"rounded-md w-full absolute top-0 left-0 z-40",
 							captureStarted && "z-0",
 						)}
 					/>
@@ -92,35 +99,45 @@ export const MakeCard = () => {
 								alt="Processed"
 								className={cn(
 									"rounded-md object-cover w-full absolute top-0 left-0 z-0",
-									captureStarted && "z-50",
+									captureStarted && "z-40",
 								)}
 							/>
+						)}
+					</div>
+					<div className="absolute top-0 w-full z-50">
+						{devices.length > 1 && (
+							<SelectCamera devices={devices} setDeviceId={setDeviceId} />
+						)}
+					</div>
+					<div className="absolute bottom-0 w-full mb-2 z-50">
+						{captureStarted === false ? (
+							<>
+								<Button onClick={switchCapture} size="lg" className="mt-2 rounded-full bg-green-300 hover:bg-green-400">
+									<ProjectorIcon />
+									Start processing
+								</Button>
+							</>
+						) : (
+							<>
+								{/* {devices.map((device, key) => (
+							<p key={device.deviceId}>{device.label || `Device ${key + 1}`}</p>
+						))} */}
+								<Button onClick={switchCapture} size="lg" className="mt-2 rounded-full bg-linear-to-tl from-red-500 to-blue-600 animate-pulse hover:bg-red-600">
+									<CameraIcon />
+									Stop processing
+								</Button>
+							</>
 						)}
 					</div>
 				</div>
 			</CardContent>
 			<CardFooter className="flex flex-col items-center">
-				{captureStarted === false ? (
-					<>
-						<Button onClick={switchCapture} className="mt-2">
-							<ProjectorIcon />
-							Start processing
-						</Button>
-					</>
-				) : (
-					<>
-						<Textarea
-							readOnly
-							// defaultValue="Descriptors"
-							value={`Size: ${descriptorsArray.length / 1024} KB \n ${JSON.stringify(descriptorsArray)}`}
-							className="max-h-24 overflow-auto p-2 rounded-md"
-						/>
-						<Button onClick={switchCapture} className="mt-2">
-							<CameraIcon />
-							Stop processing
-						</Button>
-					</>
-				)}
+				<Textarea
+					readOnly
+					// defaultValue="Descriptors"
+					value={`Size: ${descriptorsArray.length / 1024} KB \n ${JSON.stringify(descriptorsArray)}`}
+					className="max-h-24 overflow-auto p-2 rounded-md resize-none"
+				/>
 			</CardFooter>
 		</Card>
 	)

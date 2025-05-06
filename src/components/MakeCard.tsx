@@ -1,14 +1,19 @@
 "use client"
 
-import { cn } from "@/lib/utils"
+import "@mdxeditor/editor/style.css"
+
+import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { ProjectorIcon, CameraIcon } from "lucide-react"
 import Webcam from "react-webcam"
+
+import { cn } from "@/lib/utils"
+import { processImageWithORB } from "@/lib/orbProcessor"
+
 import { Button } from "./ui/button"
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "./ui/card"
-import { Textarea } from "./ui/textarea"
-import { useCallback, useEffect, useRef, useState } from "react"
-import { processImageWithORB } from "@/lib/orbProcessor"
+
 import { SelectCamera } from "./SelectCamera"
+import { Editor } from "./Editor"
 
 export const MakeCard = () => {
 	const webcamRef = useRef<Webcam>(null)
@@ -19,6 +24,8 @@ export const MakeCard = () => {
 
 	const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
 	const [deviceId, setDeviceId] = useState<string | undefined>(undefined)
+
+	const [content, setContent] = useState("")
 
 	const handleDevices = useCallback(
 		(mediaDevices: MediaDeviceInfo[]) =>
@@ -61,19 +68,29 @@ export const MakeCard = () => {
 	}, [handleDevices])
 
 	useEffect(() => {
+		if (devices.length === 0) return
 		setDeviceId(devices[0]?.deviceId)
 	}, [devices])
+
+	useEffect(() => {
+		if (content) {
+			console.log(content)
+		}
+		if (descriptorsArray) {
+			console.log(descriptorsArray)
+		}
+	}, [content, descriptorsArray])
 
 	const switchCapture = () => setCaptureStarted(!captureStarted)
 
 	return (
-		<Card className="w-full h-svh m-4 lg:w-1/2 lg:h-full lg:mx-auto">
-			<CardHeader>
+		<Card className="w-full h-fit m-2 lg:w-2/3 lg:h-full lg:mx-auto">
+			<CardHeader className="hidden">
 				<CardTitle>ORB Feature Detection</CardTitle>
 			</CardHeader>
 
-			<CardContent className="">
-				<div className="relative w-full h-fit aspect-9/16 rounded-md text-center">
+			<CardContent className="flex flex-col lg:flex-row lg:space-x-4 items-center justify-center">
+				<div className="relative w-[60vw] lg:w-full aspect-3/4 rounded-md text-center">
 					<canvas ref={canvasRef} style={{ display: "none" }} />
 					<Webcam
 						audio={false}
@@ -83,7 +100,7 @@ export const MakeCard = () => {
 						videoConstraints={{
 							deviceId,
 							facingMode: "environment",
-							aspectRatio: 9 / 16,
+							aspectRatio: 3 / 4,
 						}}
 						ref={webcamRef}
 						className={cn(
@@ -111,39 +128,37 @@ export const MakeCard = () => {
 					</div>
 					<div className="absolute bottom-0 w-full mb-2 z-50">
 						{captureStarted === false ? (
-							<>
-								<Button
-									onClick={switchCapture}
-									size="lg"
-									className="mt-2 rounded-full bg-linear-to-tl from-yellow-400 to-green-300 hover:bg-green-600">
-									<ProjectorIcon />
-									Start processing
-								</Button>
-							</>
+							<Button
+								onClick={switchCapture}
+								size="lg"
+								className="mt-2 rounded-full bg-linear-to-tl from-yellow-400 to-green-300 hover:bg-green-600">
+								<ProjectorIcon />
+								开始识别
+							</Button>
 						) : (
-							<>
-								{/* {devices.map((device, key) => (
-							<p key={device.deviceId}>{device.label || `Device ${key + 1}`}</p>
-						))} */}
-								<Button
-									onClick={switchCapture}
-									size="lg"
-									className="mt-2 rounded-full bg-linear-to-tl from-red-500 to-blue-600 animate-pulse hover:bg-red-600">
-									<CameraIcon />
-									Stop processing
-								</Button>
-							</>
+							<Button
+								onClick={switchCapture}
+								size="lg"
+								className="mt-2 rounded-full bg-linear-to-tl from-red-500 to-blue-600 animate-pulse hover:bg-red-600">
+								<CameraIcon />
+								Use this descriptor
+							</Button>
 						)}
 					</div>
 				</div>
+				<div className="w-full">
+					<Suspense fallback={<div>Loading...</div>}>
+						{/* <ForwardRefEditor
+						markdown={markdown}
+						onChange={setMarkdown}
+						ref={editorRef}
+					/> */}
+						<Editor content={content} setContent={setContent} />
+					</Suspense>
+				</div>
 			</CardContent>
 			<CardFooter className="flex flex-col items-center">
-				<Textarea
-					readOnly
-					// defaultValue="Descriptors"
-					value={`Size: ${descriptorsArray.length / 1024} KB \n ${JSON.stringify(descriptorsArray)}`}
-					className="max-h-24 overflow-auto p-2 rounded-md resize-none"
-				/>
+				<Button>Submit</Button>
 			</CardFooter>
 		</Card>
 	)

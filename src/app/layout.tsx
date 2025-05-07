@@ -2,8 +2,8 @@ import type { Metadata } from "next"
 import { Noto_Serif } from "next/font/google"
 import "./globals.css"
 
-import { Toaster } from "@/components/ui/sonner"
 import { Navbar } from "@/components/Navbar"
+import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 
 const notoSerif = Noto_Serif({

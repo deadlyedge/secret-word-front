@@ -1,22 +1,22 @@
 "use client"
-
-import { Suspense, useCallback, useEffect, useRef, useState } from "react"
-import { ProjectorIcon, CameraIcon } from "lucide-react"
-import Webcam from "react-webcam"
-import axios from "axios"
+import "@/components/minimal-tiptap/styles/index.css"
 import type { Content } from "@tiptap/react"
+import axios from "axios"
+import { CameraIcon, ProjectorIcon } from "lucide-react"
+import { Suspense, useCallback, useEffect, useRef, useState } from "react"
+import Webcam from "react-webcam"
 import { toast } from "sonner"
 
-import { cn } from "@/lib/utils"
 import { processImageWithORB } from "@/lib/orbProcessor"
+import { cn } from "@/lib/utils"
 
 import { Button } from "./ui/button"
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "./ui/card"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./ui/card"
 
-import { SelectCamera } from "./SelectCamera"
-import { Editor } from "./Editor"
-import { Input } from "./ui/input"
 import type { MakerRequest } from "@/types"
+import { Editor } from "./Editor"
+import { SelectCamera } from "./SelectCamera"
+import { Input } from "./ui/input"
 
 export const MakeCard = () => {
 	const webcamRef = useRef<Webcam>(null)

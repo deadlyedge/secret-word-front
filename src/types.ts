@@ -1,7 +1,7 @@
 type CodeInput = {
-  picture_base64?: string | null
-  phrase_code?: string | null
-  image_code?: number[][] | null
+	picture_base64?: string | null
+	phrase_code?: string | null
+	image_code?: number[][] | null
 }
 
 export type GetterRequest = {

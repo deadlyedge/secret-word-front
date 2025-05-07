@@ -5,12 +5,12 @@ import { MinimalTiptapEditor } from "./minimal-tiptap"
 import { Button } from "./ui/button"
 import {
 	Dialog,
-	DialogTrigger,
 	DialogContent,
-	DialogTitle,
 	DialogDescription,
-	DialogHeader,
 	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
 } from "./ui/dialog"
 
 type EditorProps = {
@@ -33,7 +33,9 @@ export const Editor = ({ content, setContent }: EditorProps) => {
 		// />
 		<Dialog>
 			<DialogTrigger asChild>
-				<Button variant="outline"className="m-2">3.Edit your words...</Button>
+				<Button variant="outline" className="m-2">
+					3.Edit your words...
+				</Button>
 			</DialogTrigger>
 			<DialogContent className="w-full h-2/3 flex flex-col justify-center p-1">
 				<DialogHeader>
@@ -44,8 +46,6 @@ export const Editor = ({ content, setContent }: EditorProps) => {
 					<MinimalTiptapEditor
 						value={content}
 						onChange={setContent}
-						immediatelyRender={true}
-						injectCSS={true}
 						className="w-full max-h-[50vh] overflow-y-auto"
 						editorContentClassName="p-2 text-left"
 						output="html"

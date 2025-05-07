@@ -1,7 +1,5 @@
 "use client"
 
-import "@mdxeditor/editor/style.css"
-
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { ProjectorIcon, CameraIcon } from "lucide-react"
 import Webcam from "react-webcam"
@@ -22,7 +20,9 @@ import { Input } from "./ui/input"
 export const MakeCard = () => {
 	const webcamRef = useRef<Webcam>(null)
 	const canvasRef = useRef<HTMLCanvasElement>(null)
-	const [captureStarted, setCaptureStarted] = useState(false)
+	const [captureStarted, setCaptureStarted] = useState<
+		"stopped" | "captured" | "processing"
+	>("stopped")
 	const [processedImage, setProcessedImage] = useState<string>("")
 	const [descriptorsArray, setDescriptorsArray] = useState<number[][]>([])
 
@@ -56,7 +56,7 @@ export const MakeCard = () => {
 			}
 		}
 
-		if (captureStarted) {
+		if (captureStarted === "processing") {
 			intervalId = setInterval(processFrame, 500)
 		} else if (intervalId) {
 			clearInterval(intervalId)
@@ -85,8 +85,6 @@ export const MakeCard = () => {
 			console.log(descriptorsArray)
 		}
 	}, [content, descriptorsArray])
-
-	const switchCapture = () => setCaptureStarted(!captureStarted)
 
 	const handleSubmit = async () => {
 		if (!content || !descriptorsArray) return
@@ -122,7 +120,7 @@ export const MakeCard = () => {
 						ref={webcamRef}
 						className={cn(
 							"rounded-md w-full absolute top-0 left-0 z-40",
-							captureStarted && "z-0",
+							captureStarted !== "stopped" && "z-0",
 						)}
 					/>
 					<div className={cn("rounded-md w-full")}>
@@ -133,7 +131,7 @@ export const MakeCard = () => {
 								alt="Processed"
 								className={cn(
 									"rounded-md object-cover w-full absolute top-0 left-0 z-0",
-									captureStarted && "z-40",
+									captureStarted !== "stopped" && "z-40",
 								)}
 							/>
 						)}
@@ -144,9 +142,9 @@ export const MakeCard = () => {
 						)}
 					</div>
 					<div className="absolute bottom-0 w-full mb-2 z-50">
-						{captureStarted === false ? (
+						{captureStarted !== "processing" ? (
 							<Button
-								onClick={switchCapture}
+								onClick={() => setCaptureStarted("processing")}
 								size="lg"
 								className="mt-2 rounded-full bg-linear-to-tl from-yellow-400 to-green-300 hover:bg-green-600">
 								<ProjectorIcon />
@@ -154,7 +152,7 @@ export const MakeCard = () => {
 							</Button>
 						) : (
 							<Button
-								onClick={switchCapture}
+								onClick={() => setCaptureStarted("captured")}
 								size="lg"
 								className="mt-2 rounded-full bg-linear-to-tl from-red-500 to-blue-600 animate-pulse hover:bg-red-600">
 								<CameraIcon />
@@ -181,7 +179,11 @@ export const MakeCard = () => {
 				</div>
 			</CardContent>
 			<CardFooter className="flex flex-col items-center">
-				<Button onClick={handleSubmit}>Submit</Button>
+				<Button
+					disabled={!passCode || !content || !descriptorsArray}
+					onClick={handleSubmit}>
+					Submit
+				</Button>
 			</CardFooter>
 		</Card>
 	)

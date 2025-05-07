@@ -38,7 +38,7 @@ export const Editor = ({ content, setContent }: EditorProps) => {
 				"preview",
 			],
 			height: 300,
-			width: "100%",
+			width: "auto",
 		}),
 		[],
 	)

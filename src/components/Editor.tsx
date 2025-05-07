@@ -1,57 +1,72 @@
-import { useMemo, useRef } from "react"
+import type { Content } from "@tiptap/react"
+// import "../components/minimal-tiptap/styles/index.css"
 
-import type { DeepPartial } from "jodit/esm/types"
-import type { Config } from "jodit/esm/config"
-
-import dynamic from "next/dynamic"
-const JoditEditor = dynamic(() => import("jodit-react"), {
-	ssr: false,
-})
+import { MinimalTiptapEditor } from "./minimal-tiptap"
+import { Button } from "./ui/button"
+import {
+	Dialog,
+	DialogTrigger,
+	DialogContent,
+	DialogTitle,
+	DialogDescription,
+	DialogHeader,
+	DialogFooter,
+} from "./ui/dialog"
 
 type EditorProps = {
-	content: string
-	setContent: (content: string) => void
+	content: Content
+	setContent: (content: Content) => void
 }
 
 export const Editor = ({ content, setContent }: EditorProps) => {
-	const editor = useRef(null)
-
-	const config: DeepPartial<Config> = useMemo(
-		() => ({
-			readonly: false, // all options from https://xdsoft.net/jodit/docs/,
-			theme: "dark",
-			toolbarButtonSize: "small",
-			placeholder: "Write something awesome...",
-			uploader: {
-				insertImageAsBase64URI: true,
-			},
-			buttonsXS: [
-				"bold",
-				"italic",
-				"underline",
-				"paragraph",
-				"image",
-				"video",
-				"link",
-				"undo",
-				"redo",
-				"preview",
-			],
-			height: 300,
-			width: "auto",
-		}),
-		[],
-	)
-
 	return (
-		<JoditEditor
-			ref={editor}
-			value={content}
-			config={config}
-			tabIndex={0} // tabIndex of textarea
-			onBlur={(newContent) => setContent(newContent)} // preferred to use only this option to update the content for performance reasons
-			// onChange={(newContent) => {}}
-			className="m-2"
-		/>
+		// <MinimalTiptapEditor
+		//   value={content}
+		//   onChange={setContent}
+		//   className="w-full m-2 h-64"
+		//   editorContentClassName="p-5"
+		//   output="html"
+		//   placeholder="Enter your description..."
+		//   autofocus={false}
+		//   editable={true}
+		//   editorClassName="focus:outline-hidden"
+		// />
+		<Dialog>
+			<DialogTrigger asChild>
+				<Button variant="outline"className="m-2">3.Edit your words...</Button>
+			</DialogTrigger>
+			<DialogContent className="w-full h-2/3 flex flex-col justify-center p-1">
+				<DialogHeader>
+					<DialogTitle className="">3.Say your words...</DialogTitle>
+					<DialogDescription className="sr-only">
+						Fill in the form below to create a new post.
+					</DialogDescription>
+					<MinimalTiptapEditor
+						value={content}
+						onChange={setContent}
+						immediatelyRender={true}
+						injectCSS={true}
+						className="w-full max-h-[50vh] overflow-y-auto"
+						editorContentClassName="p-2 text-left"
+						output="html"
+						placeholder="Type your description here..."
+						editable={true}
+						editorClassName="focus:outline-hidden"
+					/>
+				</DialogHeader>
+
+				<DialogFooter>
+					{/* <Button
+					type="button"
+					className="w-full"
+					onClick={() => {
+						form.handleSubmit(onSubmit)()
+					}}
+				>
+					Save changes
+				</Button> */}
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
 	)
 }

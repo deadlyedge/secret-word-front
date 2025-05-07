@@ -4,6 +4,7 @@ import "./globals.css"
 
 import { Toaster } from "@/components/ui/sonner"
 import { Navbar } from "@/components/Navbar"
+import { TooltipProvider } from "@/components/ui/tooltip"
 
 const notoSerif = Noto_Serif({
 	subsets: ["latin"],
@@ -25,8 +26,8 @@ export default function RootLayout({
 		<html lang="en">
 			<body
 				className={`${notoSerif.className} dark antialiased h-screen overflow-hidden p-1`}>
-        <Navbar />
-				{children}
+				<Navbar />
+				<TooltipProvider>{children}</TooltipProvider>
 				<Toaster duration={2000} />
 			</body>
 		</html>

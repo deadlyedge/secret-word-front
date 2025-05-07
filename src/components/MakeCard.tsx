@@ -3,6 +3,9 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { ProjectorIcon, CameraIcon } from "lucide-react"
 import Webcam from "react-webcam"
+import axios from "axios"
+import type { Content } from "@tiptap/react"
+import { toast } from "sonner"
 
 import { cn } from "@/lib/utils"
 import { processImageWithORB } from "@/lib/orbProcessor"
@@ -12,10 +15,8 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "./ui/card"
 
 import { SelectCamera } from "./SelectCamera"
 import { Editor } from "./Editor"
-import axios from "axios"
-import type { MakerRequest } from "@/types"
-import { toast } from "sonner"
 import { Input } from "./ui/input"
+import type { MakerRequest } from "@/types"
 
 export const MakeCard = () => {
 	const webcamRef = useRef<Webcam>(null)
@@ -29,7 +30,7 @@ export const MakeCard = () => {
 	const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
 	const [deviceId, setDeviceId] = useState<string | undefined>(undefined)
 
-	const [content, setContent] = useState("")
+	const [content, setContent] = useState<Content>("")
 	const [passCode, setPassCode] = useState("")
 
 	const handleDevices = useCallback(
@@ -90,12 +91,12 @@ export const MakeCard = () => {
 		if (!content || !descriptorsArray) return
 		const jsonData: MakerRequest = {
 			pass_code: passCode,
-			words: content,
+			words: content.toString(),
 			image_code: descriptorsArray,
 		}
 		const response = await axios.post("http://localhost:8000/maker", jsonData)
 		console.log(response.data)
-		toast.info(`Submitted: ${JSON.stringify(response.data)}`)
+		toast.info(`Submitted: ${passCode}`)
 	}
 
 	return (
@@ -148,7 +149,7 @@ export const MakeCard = () => {
 								size="lg"
 								className="mt-2 rounded-full bg-linear-to-tl from-yellow-400 to-green-300 hover:bg-green-600">
 								<ProjectorIcon />
-								开始识别
+								1.开始识别
 							</Button>
 						) : (
 							<Button
@@ -164,9 +165,10 @@ export const MakeCard = () => {
 				<div className="w-full flex flex-col items-center justify-center">
 					<Input
 						type="text"
-						placeholder="Enter pass code"
+						placeholder="2.'天王盖地虎'，你的暗号"
 						value={passCode}
 						onChange={(e) => setPassCode(e.target.value)}
+						className="mt-2"
 					/>
 					<Suspense fallback={<div>Loading...</div>}>
 						{/* <ForwardRefEditor
@@ -182,7 +184,9 @@ export const MakeCard = () => {
 				<Button
 					disabled={!passCode || !content || !descriptorsArray}
 					onClick={handleSubmit}>
-					Submit
+					{passCode && content && descriptorsArray
+						? "生成密语"
+						: "填写以上三项生成密语"}
 				</Button>
 			</CardFooter>
 		</Card>

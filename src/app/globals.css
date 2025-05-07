@@ -125,3 +125,25 @@
 	background-color: #2e2e2e !important;
 	/* color: #ffffff !important; */
 }
+
+/* width */
+::-webkit-scrollbar {
+	width: 5px;
+	height: 2px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+	background: #333;
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+	background: #666;
+	border-radius: 5px;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+	background: #999;
+}

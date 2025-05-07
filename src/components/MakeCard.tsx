@@ -14,6 +14,10 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "./ui/card"
 
 import { SelectCamera } from "./SelectCamera"
 import { Editor } from "./Editor"
+import axios from "axios"
+import type { MakerRequest } from "@/types"
+import { toast } from "sonner"
+import { Input } from "./ui/input"
 
 export const MakeCard = () => {
 	const webcamRef = useRef<Webcam>(null)
@@ -26,6 +30,7 @@ export const MakeCard = () => {
 	const [deviceId, setDeviceId] = useState<string | undefined>(undefined)
 
 	const [content, setContent] = useState("")
+	const [passCode, setPassCode] = useState("")
 
 	const handleDevices = useCallback(
 		(mediaDevices: MediaDeviceInfo[]) =>
@@ -82,6 +87,18 @@ export const MakeCard = () => {
 	}, [content, descriptorsArray])
 
 	const switchCapture = () => setCaptureStarted(!captureStarted)
+
+	const handleSubmit = async () => {
+		if (!content || !descriptorsArray) return
+		const jsonData: MakerRequest = {
+			pass_code: passCode,
+			words: content,
+			image_code: descriptorsArray,
+		}
+		const response = await axios.post("http://localhost:8000/maker", jsonData)
+		console.log(response.data)
+		toast.info(`Submitted: ${JSON.stringify(response.data)}`)
+	}
 
 	return (
 		<Card className="w-full h-fit m-2 lg:w-2/3 lg:h-full lg:mx-auto">
@@ -146,7 +163,13 @@ export const MakeCard = () => {
 						)}
 					</div>
 				</div>
-				<div className="w-full">
+				<div className="w-full flex flex-col items-center justify-center">
+					<Input
+						type="text"
+						placeholder="Enter pass code"
+						value={passCode}
+						onChange={(e) => setPassCode(e.target.value)}
+					/>
 					<Suspense fallback={<div>Loading...</div>}>
 						{/* <ForwardRefEditor
 						markdown={markdown}
@@ -158,7 +181,7 @@ export const MakeCard = () => {
 				</div>
 			</CardContent>
 			<CardFooter className="flex flex-col items-center">
-				<Button>Submit</Button>
+				<Button onClick={handleSubmit}>Submit</Button>
 			</CardFooter>
 		</Card>
 	)

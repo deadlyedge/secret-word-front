@@ -1,4 +1,4 @@
-import * as cv from "@techstark/opencv-js"
+import cv from "@techstark/opencv-js"
 
 export function processImageWithORB(
 	imageSrc: string,

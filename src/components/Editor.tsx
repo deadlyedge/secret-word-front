@@ -32,8 +32,8 @@ export const Editor = ({ content, setContent }: EditorProps) => {
 		//   editorClassName="focus:outline-hidden"
 		// />
 		<Dialog>
-			<DialogTrigger asChild>
-				<Button variant="outline" className="m-2">
+			<DialogTrigger asChild >
+				<Button variant="outline" className="m-2 w-[70vw] lg:w-full">
 					3.Edit your words...
 				</Button>
 			</DialogTrigger>
@@ -47,11 +47,12 @@ export const Editor = ({ content, setContent }: EditorProps) => {
 						value={content}
 						onChange={setContent}
 						className="w-full max-h-[50vh] overflow-y-auto"
-						editorContentClassName="p-2 text-left"
+						editorContentClassName="p-2 text-left min-h-64"
 						output="html"
 						placeholder="Type your description here..."
 						editable={true}
 						editorClassName="focus:outline-hidden"
+						immediatelyRender={false}
 					/>
 				</DialogHeader>
 

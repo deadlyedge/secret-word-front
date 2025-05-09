@@ -137,11 +137,34 @@ export const GetWords = () => {
 					)
 				}
 			} catch (error) {
-				console.error(
-					"processFrameAndSend: Error processing frame or sending data:",
-					error,
-				)
-				setCaptureStarted("stopped") // Stop processing on error
+				if (axios.isAxiosError(error) && error.response) {
+					if (error.response.status === 422) {
+						console.log("Received 422 error, continuing processing.")
+						// Optionally clear state if 422 means "wrong attempt"
+						// setProcessedImage("");
+						// setContent("");
+					} else {
+						// For other server errors (500, 401, 403, etc.), stop processing.
+						setCaptureStarted("stopped")
+						// Server responded with a non-2xx status code
+						console.log(
+							`processFrameAndSend: API Error - Status ${error.response.status}`,
+							error.response.data,
+						)
+						toast.error(
+							`获取词语失败: ${error.response.status} - ${
+								error.response.data?.message || "服务器错误"
+							}`,
+						)
+					}
+				} else {
+					// Network error or other issue before server response
+					console.log(
+						"processFrameAndSend: Error processing frame or sending data:",
+						error,
+					)
+					toast.error("处理或发送数据时发生错误，请检查网络连接或稍后再试。")
+				}
 			}
 		}
 

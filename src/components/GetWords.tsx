@@ -1,17 +1,16 @@
 "use client"
 
-import type { Content } from "@tiptap/react"
 import axios from "axios"
 // import { CameraIcon, ProjectorIcon } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import Webcam from "react-webcam"
-// import { toast } from "sonner"
+import { toast } from "sonner"
 
 import { processImageWithORB } from "@/lib/orbProcessor"
 import { cn } from "@/lib/utils"
 
 // import { Button } from "./ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Input } from "./ui/input"
 
 import type { GetterRequest } from "@/types"
@@ -19,17 +18,17 @@ import { SelectCamera } from "./SelectCamera"
 import { Viewer } from "./Viewer"
 
 const MIN_PASSCODE_LENGTH = Number.parseInt(
-	process.env.MIN_PASSCODE_LENGTH || "3",
+	process.env.MIN_PASSCODE_LENGTH || "4",
 )
 
 export const GetWords = () => {
 	const webcamRef = useRef<Webcam>(null)
 	const canvasRef = useRef<HTMLCanvasElement>(null)
 	const [captureStarted, setCaptureStarted] = useState<
-		"stopped" | "captured" | "processing"
+		"stopped" | "processing"
 	>("stopped")
 	const [processedImage, setProcessedImage] = useState<string>("")
-	const [descriptorsArray, setDescriptorsArray] = useState<number[][]>([])
+	// const [descriptorsArray, setDescriptorsArray] = useState<number[][]>([])
 
 	const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
 	const [deviceId, setDeviceId] = useState<string | undefined>(undefined)
@@ -39,7 +38,7 @@ export const GetWords = () => {
 	const [inputValue, setInputValue] = useState<string>("")
 
 	const passCodeTimeout = useRef<NodeJS.Timeout | null>(null)
-	const processCheckInterval = useRef<NodeJS.Timeout | null>(null)
+	// const processCheckInterval = useRef<NodeJS.Timeout | null>(null)
 
 	const handleDevices = useCallback(
 		(mediaDevices: MediaDeviceInfo[]) =>
@@ -48,46 +47,20 @@ export const GetWords = () => {
 	)
 
 	useEffect(() => {
-		let intervalId: NodeJS.Timeout | null = null
-
-		const processFrame = async () => {
-			if (!webcamRef.current || !canvasRef.current) return
-			const imageSrc = webcamRef.current.getScreenshot()
-			if (!imageSrc) return
-
-			try {
-				const { processedDataUrl, descriptorsArray } =
-					await processImageWithORB(imageSrc, canvasRef.current)
-				setProcessedImage(processedDataUrl)
-				setDescriptorsArray(descriptorsArray)
-			} catch (error) {
-				console.error("Error processing frame:", error)
-			}
-		}
-
-		if (captureStarted === "processing") {
-			intervalId = setInterval(processFrame, 1000)
-		} else if (intervalId) {
-			clearInterval(intervalId)
-			intervalId = null
-		}
-
-		return () => {
-			if (intervalId) clearInterval(intervalId)
-		}
-	}, [captureStarted])
-
-	useEffect(() => {
 		navigator.mediaDevices.enumerateDevices().then(handleDevices)
 	}, [handleDevices])
 
 	useEffect(() => {
 		if (devices.length === 0) return
-		setDeviceId(devices[0]?.deviceId)
-	}, [devices])
+		if (!deviceId) {
+			// Set only if not already set (e.g., by user selection)
+			setDeviceId(devices[0]?.deviceId)
+		}
+	}, [devices, deviceId])
 
 	const handlePassCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		e.preventDefault()
+		setContent("") // Clear previous content
 		const value = e.target.value
 		setInputValue(value)
 		if (passCodeTimeout.current) {
@@ -95,48 +68,95 @@ export const GetWords = () => {
 		}
 		passCodeTimeout.current = setTimeout(() => {
 			setPassCode(value)
-			console.log("passCode updated:", value)
+			console.log("Debounced passCode updated:", value)
 		}, 1000)
 	}
 
-	const processCheck = useCallback(async () => {
-		if (!descriptorsArray) return
-		const jsonData: GetterRequest = {
-			pass_code: passCode,
-			image_code: descriptorsArray,
-		}
-		const response = await axios.post("http://localhost:8000/vTag", jsonData)
-
-		console.log("response", response.data)
-
-		if (
-			response.data.words &&
-			response.data.words !== content &&
-			response.data.words !== ""
-		) {
-			setContent(response.data.words)
-		}
-	}, [descriptorsArray, passCode, content])
-
 	useEffect(() => {
-		if (processCheckInterval.current) {
-			clearInterval(processCheckInterval.current)
-			processCheckInterval.current = null
-		}
-		if (passCode.length > MIN_PASSCODE_LENGTH) {
+		if (passCode.length >= MIN_PASSCODE_LENGTH) {
+			setContent("") // Clear previous content
 			setCaptureStarted("processing")
-			processCheck()
-			processCheckInterval.current = setInterval(processCheck, 1000)
+			console.log("Passcode valid, starting processing.")
+		} else {
+			setCaptureStarted("stopped")
+			console.log("Passcode invalid or too short, stopping processing.")
+		}
+	}, [passCode])
+
+	// Main processing loop effect
+	useEffect(() => {
+		let intervalId: NodeJS.Timeout | null = null
+
+		const processFrameAndSend = async () => {
+			if (
+				!webcamRef.current ||
+				!canvasRef.current ||
+				!passCode || // Ensure passCode is present
+				passCode.length < MIN_PASSCODE_LENGTH // Ensure passCode is still valid
+			) {
+				console.log(
+					"processFrameAndSend: Pre-conditions not met (refs, passcode). Stopping.",
+				)
+				setCaptureStarted("stopped") // This will lead to interval cleanup
+				return
+			}
+
+			const imageSrc = webcamRef.current.getScreenshot()
+			if (!imageSrc) {
+				console.log("processFrameAndSend: No image source.")
+				return // Try again on next interval
+			}
+
+			try {
+				console.log(
+					`processFrameAndSend: Processing frame for passCode: ${passCode}`,
+				)
+				const { processedDataUrl, descriptorsArray: newDescriptorsArray } =
+					await processImageWithORB(imageSrc, canvasRef.current)
+				setProcessedImage(processedDataUrl) // Update UI with processed image
+
+				if (newDescriptorsArray && newDescriptorsArray.length > 0) {
+					const jsonData: GetterRequest = {
+						pass_code: passCode, // Use the passCode captured by this effect's closure
+						image_code: newDescriptorsArray,
+					}
+					console.log("processFrameAndSend: Sending to backend:", jsonData)
+					const response = await axios.post(
+						"http://localhost:8000/vTag",
+						jsonData,
+					)
+					console.log(
+						"processFrameAndSend: Words received:",
+						response.data.data.words,
+					)
+					setContent(response.data.data.words)
+					setCaptureStarted("stopped") // Stop processing on successful API call
+				} else {
+					console.log(
+						"processFrameAndSend: No descriptors found, will try next frame.",
+					)
+				}
+			} catch (error) {
+				console.error(
+					"processFrameAndSend: Error processing frame or sending data:",
+					error,
+				)
+				setCaptureStarted("stopped") // Stop processing on error
+			}
+		}
+
+		if (captureStarted === "processing") {
+			console.log("Main processing loop: Starting interval.")
+			intervalId = setInterval(processFrameAndSend, 1000) // Adjust interval as needed
 		}
 
 		return () => {
-			if (processCheckInterval.current) {
-				setCaptureStarted("stopped")
-				clearInterval(processCheckInterval.current)
-				processCheckInterval.current = null
+			if (intervalId) {
+				clearInterval(intervalId)
+				console.log("Main processing loop: Interval cleared.")
 			}
 		}
-	}, [passCode, processCheck])
+	}, [captureStarted, passCode])
 
 	useEffect(() => {
 		return () => {
@@ -173,7 +193,7 @@ export const GetWords = () => {
 						onChange={handlePassCodeChange}
 						className="mb-2"
 					/>
-					{true && <Viewer content={content} />}
+					{content && <Viewer content={content} />}
 				</div>
 				<div className="relative w-[70vw] lg:w-full aspect-3/4 rounded-md text-center">
 					<canvas ref={canvasRef} style={{ display: "none" }} />
@@ -190,7 +210,7 @@ export const GetWords = () => {
 						ref={webcamRef}
 						className={cn(
 							"rounded-md w-full absolute top-0 left-0 z-40",
-							captureStarted !== "stopped" && "z-0",
+							captureStarted === "processing" && "z-0",
 						)}
 					/>
 					<div className={cn("rounded-md w-full")}>
@@ -201,7 +221,7 @@ export const GetWords = () => {
 								alt="Processed"
 								className={cn(
 									"rounded-md object-cover w-full absolute top-0 left-0 z-0",
-									captureStarted !== "stopped" && "z-40",
+									captureStarted === "processing" && "z-40",
 								)}
 							/>
 						)}
@@ -211,37 +231,8 @@ export const GetWords = () => {
 							<SelectCamera devices={devices} setDeviceId={setDeviceId} />
 						)}
 					</div>
-					<div className="absolute bottom-0 w-full mb-2 z-50">
-						{/* {captureStarted !== "processing" ? (
-							<Button
-								onClick={() => setCaptureStarted("processing")}
-								size="lg"
-								className="mt-2 rounded-full bg-linear-to-tl from-yellow-400 to-green-300 hover:bg-green-600">
-								<ProjectorIcon />
-								1.开始识别
-							</Button>
-						) : (
-							<Button
-								onClick={() => setCaptureStarted("captured")}
-								size="lg"
-								className="mt-2 rounded-full bg-linear-to-tl from-red-500 to-blue-600 animate-pulse hover:bg-red-600">
-								<CameraIcon />
-								1.选定图像
-							</Button>
-						)} */}
-					</div>
 				</div>
 			</CardContent>
-			<CardFooter className="flex flex-col items-center">
-				{/* <Button
-					disabled={!passCode || !content || !descriptorsArray}
-					onClick={handleSubmit}
-					className="w-[70vw] lg:w-full">
-					{passCode && content && descriptorsArray
-						? "生成密语"
-						: "填写以上三项生成密语"}
-				</Button> */}
-			</CardFooter>
 		</Card>
 	)
 }

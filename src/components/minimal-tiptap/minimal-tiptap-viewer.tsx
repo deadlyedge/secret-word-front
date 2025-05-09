@@ -1,5 +1,4 @@
 import "./styles/index.css"
-import type { FocusEvent } from "react"
 
 import { cn } from "@/lib/utils"
 import type { Content } from "@tiptap/react"
@@ -37,7 +36,7 @@ export const MinimalTiptapViewer = ({
 		<MeasuredContainer
 			as="div"
 			name="editor"
-			onCloseAutoFocus={(event: FocusEvent<HTMLDivElement>) => event.preventDefault()}
+			// onCloseAutoFocus={(event: FocusEvent<HTMLDivElement>) => event.preventDefault()}
 			className={cn(
 				"border-input focus-within:border-primary min-data-[orientation=vertical]:h-72 flex h-auto w-full flex-col rounded-md border shadow-xs",
 				className,

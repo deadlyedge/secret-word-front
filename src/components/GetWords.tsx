@@ -9,7 +9,7 @@ import { toast } from "sonner"
 import { processImageWithORB } from "@/lib/orbProcessor"
 import { cn } from "@/lib/utils"
 
-// import { Button } from "./ui/button"
+import { Button } from "./ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Input } from "./ui/input"
 
@@ -20,6 +20,7 @@ import { Viewer } from "./Viewer"
 const MIN_PASSCODE_LENGTH = Number.parseInt(
 	process.env.MIN_PASSCODE_LENGTH || "4",
 )
+const apiUrl = process.env.NEXT_PUBLIC_API_URL
 
 export const GetWords = () => {
 	const webcamRef = useRef<Webcam>(null)
@@ -47,8 +48,28 @@ export const GetWords = () => {
 	)
 
 	useEffect(() => {
-		navigator.mediaDevices.enumerateDevices().then(handleDevices)
+		const handleDeviceChange = () => {
+			navigator.mediaDevices.enumerateDevices().then(handleDevices)
+		}
+		
+		navigator.mediaDevices.ondevicechange = handleDeviceChange
+		
+		return () => {
+			navigator.mediaDevices.ondevicechange = null
+		}
 	}, [handleDevices])
+
+	const requestCameraPermission = async () => {
+		try {
+			await navigator.mediaDevices.getUserMedia({ 
+				video: { facingMode: "environment" }
+			})
+			await navigator.mediaDevices.enumerateDevices().then(handleDevices)
+		} catch (err) {
+			console.error("无法获取摄像头权限:", err)
+			toast.error("请先允许摄像头权限")
+		}
+	}
 
 	useEffect(() => {
 		if (devices.length === 0) return
@@ -122,7 +143,7 @@ export const GetWords = () => {
 					}
 					console.log("processFrameAndSend: Sending to backend:", jsonData)
 					const response = await axios.post(
-						"http://localhost:8000/vTag",
+						`${apiUrl}/vTag`,
 						jsonData,
 					)
 					console.log(
@@ -189,18 +210,6 @@ export const GetWords = () => {
 		}
 	}, [])
 
-	// const handleSubmit = async () => {
-	// 	if (!content || !descriptorsArray) return
-	// 	const jsonData: MakerRequest = {
-	// 		pass_code: passCode,
-	// 		words: content.toString(),
-	// 		image_code: descriptorsArray,
-	// 	}
-	// 	const response = await axios.post("http://localhost:8000/maker", jsonData)
-	// 	console.log(response.data)
-	// 	toast.info(`Submitted: ${passCode}`)
-	// }
-
 	return (
 		<Card className="w-full h-fit m-2 lg:w-2/3 lg:h-full lg:mx-auto">
 			<CardHeader className="hidden">
@@ -217,13 +226,18 @@ export const GetWords = () => {
 						className="mb-2"
 					/>
 					{content && <Viewer content={content} />}
+					<Button 
+						type="button"
+						onClick={requestCameraPermission}
+						className="mt-2 px-4 py-2 bg-blue-500 text-white rounded"
+					>
+						请求摄像头权限
+					</Button>
 				</div>
 				<div className="relative w-[70vw] lg:w-full aspect-3/4 rounded-md text-center">
 					<canvas ref={canvasRef} style={{ display: "none" }} />
 					<Webcam
 						audio={false}
-						// height={480}
-						// width={640}
 						screenshotFormat="image/jpeg"
 						videoConstraints={{
 							deviceId,

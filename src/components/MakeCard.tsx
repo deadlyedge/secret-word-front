@@ -18,6 +18,8 @@ import type { MakerRequest } from "@/types"
 import { Editor } from "./Editor"
 import { SelectCamera } from "./SelectCamera"
 
+const apiUrl = process.env.NEXT_PUBLIC_API_URL
+
 export const MakeCard = () => {
 	const webcamRef = useRef<Webcam>(null)
 	const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -94,7 +96,7 @@ export const MakeCard = () => {
 			words: content.toString(),
 			image_code: descriptorsArray,
 		}
-		const response = await axios.post("http://localhost:8000/maker", jsonData)
+		const response = await axios.post(`${apiUrl}/maker`, jsonData)
 		console.log(response.data)
 		toast.info(`Submitted: ${passCode}`)
 	}
@@ -171,11 +173,6 @@ export const MakeCard = () => {
 						className="mt-2"
 					/>
 					<Suspense fallback={<div>Loading...</div>}>
-						{/* <ForwardRefEditor
-						markdown={markdown}
-						onChange={setMarkdown}
-						ref={editorRef}
-					/> */}
 						<Editor content={content} setContent={setContent} />
 					</Suspense>
 				</div>

@@ -33,7 +33,7 @@ export const Editor = ({ content, setContent }: EditorProps) => {
 		// />
 		<Dialog>
 			<DialogTrigger asChild >
-				<Button variant="outline" className="m-2 w-[70vw] lg:w-full">
+				<Button variant="outline" className="m-2 w-full">
 					3.Edit your words...
 				</Button>
 			</DialogTrigger>

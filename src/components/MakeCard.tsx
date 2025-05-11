@@ -96,19 +96,21 @@ export const MakeCard = () => {
 			words: content.toString(),
 			image_code: descriptorsArray,
 		}
+
+		// send image vector data and secret words to database
 		const response = await axios.post(`${apiUrl}/maker`, jsonData)
 		console.log(response.data)
 		toast.info(`Submitted: ${passCode}`)
 	}
 
 	return (
-		<Card className="w-full h-fit m-2 lg:w-2/3 lg:h-full lg:mx-auto">
+		<Card className="w-full m-2 lg:w-1/2 2xl:w-1/3 lg:mx-auto">
 			<CardHeader className="hidden">
 				<CardTitle>ORB Feature Detection</CardTitle>
 			</CardHeader>
 
-			<CardContent className="flex flex-col lg:flex-row lg:space-x-4 items-center justify-center">
-				<div className="relative w-[70vw] lg:w-full aspect-3/4 rounded-md text-center">
+			<CardContent className="flex flex-col items-center justify-center gap-2">
+				<div className="relative w-full aspect-4/3 rounded-md text-center">
 					<canvas ref={canvasRef} style={{ display: "none" }} />
 					<Webcam
 						audio={false}
@@ -117,8 +119,8 @@ export const MakeCard = () => {
 						screenshotFormat="image/jpeg"
 						videoConstraints={{
 							deviceId,
-							facingMode: "environment",
-							aspectRatio: 3 / 4,
+							// facingMode: "environment",
+							aspectRatio: 4 / 3,
 						}}
 						ref={webcamRef}
 						className={cn(
@@ -164,7 +166,7 @@ export const MakeCard = () => {
 						)}
 					</div>
 				</div>
-				<div className="w-[70vw] lg:w-full flex flex-col items-center justify-center">
+				<div className="w-full flex flex-col items-center justify-center">
 					<Input
 						type="text"
 						placeholder="2.'天王盖地虎'，你的暗号"

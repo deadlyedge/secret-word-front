@@ -51,9 +51,9 @@ export const GetWords = () => {
 		const handleDeviceChange = () => {
 			navigator.mediaDevices.enumerateDevices().then(handleDevices)
 		}
-		
+
 		navigator.mediaDevices.ondevicechange = handleDeviceChange
-		
+
 		return () => {
 			navigator.mediaDevices.ondevicechange = null
 		}
@@ -61,7 +61,7 @@ export const GetWords = () => {
 
 	const requestCameraPermission = async () => {
 		try {
-			await navigator.mediaDevices.getUserMedia({ 
+			await navigator.mediaDevices.getUserMedia({
 				video: { facingMode: "environment" }
 			})
 			await navigator.mediaDevices.enumerateDevices().then(handleDevices)
@@ -108,6 +108,11 @@ export const GetWords = () => {
 	useEffect(() => {
 		let intervalId: NodeJS.Timeout | null = null
 
+		const beep = () => {
+			const audio = new Audio("/audio/beep.mp3")
+			audio.play()
+		}
+
 		const processFrameAndSend = async () => {
 			if (
 				!webcamRef.current ||
@@ -142,14 +147,12 @@ export const GetWords = () => {
 						image_code: newDescriptorsArray,
 					}
 					console.log("processFrameAndSend: Sending to backend:", jsonData)
-					const response = await axios.post(
-						`${apiUrl}/vTag`,
-						jsonData,
-					)
+					const response = await axios.post(`${apiUrl}/vTag`, jsonData)
 					console.log(
 						"processFrameAndSend: Words received:",
 						response.data.data.words,
 					)
+					beep()
 					setContent(response.data.data.words)
 					setCaptureStarted("stopped") // Stop processing on successful API call
 				} else {

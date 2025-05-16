@@ -9,7 +9,6 @@ import { toast } from "sonner"
 import { processImageWithORB } from "@/lib/orbProcessor"
 import { cn } from "@/lib/utils"
 
-import { Button } from "./ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Input } from "./ui/input"
 
@@ -48,28 +47,13 @@ export const GetWords = () => {
 	)
 
 	useEffect(() => {
-		const handleDeviceChange = () => {
-			navigator.mediaDevices.enumerateDevices().then(handleDevices)
-		}
-
-		navigator.mediaDevices.ondevicechange = handleDeviceChange
-
-		return () => {
-			navigator.mediaDevices.ondevicechange = null
-		}
+		navigator.mediaDevices.enumerateDevices().then(handleDevices)
 	}, [handleDevices])
 
-	const requestCameraPermission = async () => {
-		try {
-			await navigator.mediaDevices.getUserMedia({
-				video: { facingMode: "environment" }
-			})
-			await navigator.mediaDevices.enumerateDevices().then(handleDevices)
-		} catch (err) {
-			console.error("无法获取摄像头权限:", err)
-			toast.error("请先允许摄像头权限")
-		}
-	}
+	useEffect(() => {
+		if (devices.length === 0) return
+		setDeviceId(devices[0]?.deviceId)
+	}, [devices])
 
 	useEffect(() => {
 		if (devices.length === 0) return
@@ -214,13 +198,13 @@ export const GetWords = () => {
 	}, [])
 
 	return (
-		<Card className="w-full h-fit m-2 lg:w-2/3 lg:h-full lg:mx-auto">
+		<Card className="w-full m-2 lg:w-1/2 2xl:w-1/3 lg:mx-auto">
 			<CardHeader className="hidden">
 				<CardTitle>ORB Feature Detection</CardTitle>
 			</CardHeader>
 
-			<CardContent className="flex flex-col lg:flex-row lg:space-x-4 items-center justify-center">
-				<div className="w-[70vw] lg:w-full flex flex-col items-center justify-center">
+			<CardContent className="flex flex-col items-center justify-center gap-2">
+				<div className="w-full flex flex-col items-center justify-center">
 					<Input
 						type="text"
 						placeholder="2.'天王盖地虎'，你的暗号"
@@ -229,15 +213,15 @@ export const GetWords = () => {
 						className="mb-2"
 					/>
 					{content && <Viewer content={content} />}
-					<Button 
+					{/* <Button 
 						type="button"
 						onClick={requestCameraPermission}
 						className="mt-2 px-4 py-2 bg-blue-500 text-white rounded"
 					>
 						请求摄像头权限
-					</Button>
+					</Button> */}
 				</div>
-				<div className="relative w-[70vw] lg:w-full aspect-3/4 rounded-md text-center">
+				<div className="relative w-full aspect-4/3 rounded-md text-center">
 					<canvas ref={canvasRef} style={{ display: "none" }} />
 					<Webcam
 						audio={false}
@@ -245,7 +229,7 @@ export const GetWords = () => {
 						videoConstraints={{
 							deviceId,
 							facingMode: "environment",
-							aspectRatio: 3 / 4,
+							aspectRatio: 4 / 3,
 						}}
 						ref={webcamRef}
 						className={cn(

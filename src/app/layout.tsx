@@ -2,10 +2,10 @@ import type { Metadata } from "next"
 import { Noto_Serif } from "next/font/google"
 import "./globals.css"
 
+import { Footer } from "@/components/Footer"
 import { Navbar } from "@/components/Navbar"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { Footer } from "@/components/Footer"
 
 const notoSerif = Noto_Serif({
 	subsets: ["latin"],

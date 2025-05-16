@@ -1,18 +1,17 @@
 "use client"
 
-import axios from "axios"
 // import { CameraIcon, ProjectorIcon } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import Webcam from "react-webcam"
 import { toast } from "sonner"
 
-import { processImageWithORB } from "@/lib/orbProcessor"
 import { cn } from "@/lib/utils"
 
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Input } from "./ui/input"
 
-import type { GetterRequest } from "@/types"
+import { useCamera } from "@/hooks/useCamera"
+import { useFrameProcessor } from "@/hooks/useFrameProcessor"
 import { SelectCamera } from "./SelectCamera"
 import { Viewer } from "./Viewer"
 
@@ -29,39 +28,13 @@ export const GetWords = () => {
 	>("stopped")
 	const [processedImage, setProcessedImage] = useState<string>("")
 	// const [descriptorsArray, setDescriptorsArray] = useState<number[][]>([])
-
-	const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
-	const [deviceId, setDeviceId] = useState<string | undefined>(undefined)
-
+	const { devices, deviceId, setDeviceId } = useCamera()
 	const [content, setContent] = useState<string>("")
 	const [passCode, setPassCode] = useState<string>("")
 	const [inputValue, setInputValue] = useState<string>("")
 
 	const passCodeTimeout = useRef<NodeJS.Timeout | null>(null)
 	// const processCheckInterval = useRef<NodeJS.Timeout | null>(null)
-
-	const handleDevices = useCallback(
-		(mediaDevices: MediaDeviceInfo[]) =>
-			setDevices(mediaDevices.filter(({ kind }) => kind === "videoinput")),
-		[],
-	)
-
-	useEffect(() => {
-		navigator.mediaDevices.enumerateDevices().then(handleDevices)
-	}, [handleDevices])
-
-	useEffect(() => {
-		if (devices.length === 0) return
-		setDeviceId(devices[0]?.deviceId)
-	}, [devices])
-
-	useEffect(() => {
-		if (devices.length === 0) return
-		if (!deviceId) {
-			// Set only if not already set (e.g., by user selection)
-			setDeviceId(devices[0]?.deviceId)
-		}
-	}, [devices, deviceId])
 
 	const handlePassCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		e.preventDefault()
@@ -88,106 +61,37 @@ export const GetWords = () => {
 		}
 	}, [passCode])
 
-	// Main processing loop effect
-	useEffect(() => {
-		let intervalId: NodeJS.Timeout | null = null
+	const handleProcessingSuccess = useCallback((words: string) => {
+		const audio = new Audio("/audio/beep.mp3")
+		audio.play().catch((err) => console.error("Error playing beep:", err))
+		setContent(words)
+		setCaptureStarted("stopped") // Stop processing on successful API call
+	}, []) // Dependencies setContent, setCaptureStarted are stable from useState
 
-		const beep = () => {
-			const audio = new Audio("/audio/beep.mp3")
-			audio.play()
-		}
+	const handleProcessingStop = useCallback(() => {
+		setCaptureStarted("stopped")
+	}, []) // Dependency setCaptureStarted is stable
 
-		const processFrameAndSend = async () => {
-			if (
-				!webcamRef.current ||
-				!canvasRef.current ||
-				!passCode || // Ensure passCode is present
-				passCode.length < MIN_PASSCODE_LENGTH // Ensure passCode is still valid
-			) {
-				console.log(
-					"processFrameAndSend: Pre-conditions not met (refs, passcode). Stopping.",
-				)
-				setCaptureStarted("stopped") // This will lead to interval cleanup
-				return
-			}
+	const handleProcessedImageUpdate = useCallback((dataUrl: string) => {
+		setProcessedImage(dataUrl)
+	}, []) // Dependency setProcessedImage is stable
 
-			const imageSrc = webcamRef.current.getScreenshot()
-			if (!imageSrc) {
-				console.log("processFrameAndSend: No image source.")
-				return // Try again on next interval
-			}
+	const handleProcessingError = useCallback((message: string) => {
+		toast.error(message)
+	}, []) // Dependency toast.error is stable
 
-			try {
-				console.log(
-					`processFrameAndSend: Processing frame for passCode: ${passCode}`,
-				)
-				const { processedDataUrl, descriptorsArray: newDescriptorsArray } =
-					await processImageWithORB(imageSrc, canvasRef.current)
-				setProcessedImage(processedDataUrl) // Update UI with processed image
-
-				if (newDescriptorsArray && newDescriptorsArray.length > 0) {
-					const jsonData: GetterRequest = {
-						pass_code: passCode, // Use the passCode captured by this effect's closure
-						image_code: newDescriptorsArray,
-					}
-					console.log("processFrameAndSend: Sending to backend:", jsonData)
-					const response = await axios.post(`${apiUrl}/vTag`, jsonData)
-					console.log(
-						"processFrameAndSend: Words received:",
-						response.data.data.words,
-					)
-					beep()
-					setContent(response.data.data.words)
-					setCaptureStarted("stopped") // Stop processing on successful API call
-				} else {
-					console.log(
-						"processFrameAndSend: No descriptors found, will try next frame.",
-					)
-				}
-			} catch (error) {
-				if (axios.isAxiosError(error) && error.response) {
-					if (error.response.status === 422) {
-						console.log("Received 422 error, continuing processing.")
-						// Optionally clear state if 422 means "wrong attempt"
-						// setProcessedImage("");
-						// setContent("");
-					} else {
-						// For other server errors (500, 401, 403, etc.), stop processing.
-						setCaptureStarted("stopped")
-						// Server responded with a non-2xx status code
-						console.log(
-							`processFrameAndSend: API Error - Status ${error.response.status}`,
-							error.response.data,
-						)
-						toast.error(
-							`获取词语失败: ${error.response.status} - ${
-								error.response.data?.message || "服务器错误"
-							}`,
-						)
-					}
-				} else {
-					// Network error or other issue before server response
-					console.log(
-						"processFrameAndSend: Error processing frame or sending data:",
-						error,
-					)
-					toast.error("处理或发送数据时发生错误，请检查网络连接或稍后再试。")
-				}
-			}
-		}
-
-		if (captureStarted === "processing") {
-			console.log("Main processing loop: Starting interval.")
-			intervalId = setInterval(processFrameAndSend, 1000) // Adjust interval as needed
-		}
-
-		return () => {
-			if (intervalId) {
-				clearInterval(intervalId)
-				console.log("Main processing loop: Interval cleared.")
-			}
-		}
-	}, [captureStarted, passCode])
+	useFrameProcessor({
+		webcamRef,
+		canvasRef,
+		passCode,
+		apiUrl,
+		minPasscodeLength: MIN_PASSCODE_LENGTH,
+		captureStarted,
+		onProcessingSuccess: handleProcessingSuccess,
+		onProcessingStop: handleProcessingStop,
+		onProcessedImageUpdate: handleProcessedImageUpdate,
+		onProcessingError: handleProcessingError,
+	})
 
 	useEffect(() => {
 		return () => {

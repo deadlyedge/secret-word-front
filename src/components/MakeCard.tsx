@@ -3,11 +3,12 @@
 import type { Content } from "@tiptap/react"
 import axios from "axios"
 import { CameraIcon, ProjectorIcon } from "lucide-react"
-import { Suspense, useCallback, useEffect, useRef, useState } from "react"
+import { Suspense, useCallback, useRef, useState } from "react"
 import Webcam from "react-webcam"
 import { toast } from "sonner"
 
-import { processImageWithORB } from "@/lib/orbProcessor"
+import { useCamera } from "@/hooks/useCamera"
+import { useOrbProcessingStream } from "@/hooks/useOrbProcessingStream"
 import { cn } from "@/lib/utils"
 
 import { Button } from "./ui/button"
@@ -29,78 +30,87 @@ export const MakeCard = () => {
 	const [processedImage, setProcessedImage] = useState<string>("")
 	const [descriptorsArray, setDescriptorsArray] = useState<number[][]>([])
 
-	const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
-	const [deviceId, setDeviceId] = useState<string | undefined>(undefined)
+	const { devices, deviceId, setDeviceId } = useCamera()
 
 	const [content, setContent] = useState<Content>("")
 	const [passCode, setPassCode] = useState("")
 
-	const handleDevices = useCallback(
-		(mediaDevices: MediaDeviceInfo[]) =>
-			setDevices(mediaDevices.filter(({ kind }) => kind === "videoinput")),
-		[],
+	const isActiveStream = captureStarted === "processing"
+
+	const handleMakeCardFrameProcessed = useCallback(
+		(data: { processedDataUrl: string; descriptorsArray: number[][] }) => {
+			setProcessedImage(data.processedDataUrl)
+			setDescriptorsArray(data.descriptorsArray)
+		},
+		[], // setProcessedImage and setDescriptorsArray are stable
 	)
 
-	useEffect(() => {
-		let intervalId: NodeJS.Timeout | null = null
+	const handleMakeCardStreamError = useCallback((error: unknown) => {
+		console.error("MakeCard: Error during ORB processing stream:", error)
+		toast.error("图像处理时发生错误")
+		// Optionally, stop processing if desired
+		// setCaptureStarted("stopped");
+	}, [])
 
-		const processFrame = async () => {
-			if (!webcamRef.current || !canvasRef.current) return
-			const imageSrc = webcamRef.current.getScreenshot()
-			if (!imageSrc) return
+	useOrbProcessingStream({
+		webcamRef,
+		canvasRef,
+		isActive: isActiveStream,
+		intervalMs: 500, // MakeCard used 500ms
+		onFrameProcessed: handleMakeCardFrameProcessed,
+		onProcessingError: handleMakeCardStreamError,
+	})
 
-			try {
-				const { processedDataUrl, descriptorsArray } =
-					await processImageWithORB(imageSrc, canvasRef.current)
-				setProcessedImage(processedDataUrl)
-				setDescriptorsArray(descriptorsArray)
-			} catch (error) {
-				console.error("Error processing frame:", error)
-			}
-		}
+	// useEffect(() => {
+	// 	// This effect is for logging and can be kept or removed based on debugging needs.
+	// 	// It's separate from the stream processing.
+	// 	if (content && Object.keys(content).length > 0) {
+	// 		// Check if content is not empty
+	// 		console.log("Content updated:", JSON.stringify(content))
+	// 	}
+	// 	if (descriptorsArray && descriptorsArray.length > 0) {
+	// 		console.log("Descriptors updated, count:", descriptorsArray.length)
+	// 	}
+	// }, [content, descriptorsArray])
 
-		if (captureStarted === "processing") {
-			intervalId = setInterval(processFrame, 500)
-		} else if (intervalId) {
-			clearInterval(intervalId)
-			intervalId = null
-		}
-
-		return () => {
-			if (intervalId) clearInterval(intervalId)
-		}
-	}, [captureStarted])
-
-	useEffect(() => {
-		navigator.mediaDevices.enumerateDevices().then(handleDevices)
-	}, [handleDevices])
-
-	useEffect(() => {
-		if (devices.length === 0) return
-		setDeviceId(devices[0]?.deviceId)
-	}, [devices])
-
-	useEffect(() => {
-		if (content) {
-			console.log(content)
-		}
-		if (descriptorsArray) {
-			console.log(descriptorsArray)
-		}
-	}, [content, descriptorsArray])
-
+	// Function to handle form submission
 	const handleSubmit = async () => {
-		if (!content || !descriptorsArray) return
+		if (
+			!passCode ||
+			!content ||
+			Object.keys(content).length === 0 ||
+			!descriptorsArray ||
+			descriptorsArray.length === 0
+		) {
+			toast.error("请确保已捕获图像并填写所有必填字段 (暗号和内容)。")
+			return
+		}
+
 		const jsonData: MakerRequest = {
 			pass_code: passCode,
-			words: content.toString(),
+			words: JSON.stringify(content), // Serialize Tiptap content to JSON string
 			image_code: descriptorsArray,
 		}
 
 		// send image vector data and secret words to database
-		const response = await axios.post(`${apiUrl}/maker`, jsonData)
-		console.log(response.data)
-		toast.info(`Submitted: ${passCode}`)
+		try {
+			const response = await axios.post(`${apiUrl}/maker`, jsonData)
+			console.log(response.data)
+			toast.success(`密语卡 '${passCode}' 已成功生成!`)
+			// Reset form state
+			setPassCode("")
+			setContent({}) // Reset Tiptap content to empty
+			setProcessedImage("")
+			setDescriptorsArray([])
+			setCaptureStarted("stopped")
+		} catch (error: unknown) {
+			console.error("Error submitting to /maker:", error)
+			const errorMsg =
+				axios.isAxiosError(error) && error.response
+					? `${error.response.status} - ${error.response.data?.message || "服务器错误"}`
+					: "未知错误"
+			toast.error(`提交失败: ${errorMsg}`)
+		}
 	}
 
 	return (
@@ -181,11 +191,21 @@ export const MakeCard = () => {
 			</CardContent>
 			<CardFooter className="flex flex-col items-center">
 				<Button
-					disabled={!passCode || !content || !descriptorsArray}
+					disabled={
+						!passCode ||
+						!content ||
+						Object.keys(content).length === 0 ||
+						descriptorsArray.length === 0 ||
+						captureStarted === "processing"
+					}
 					onClick={handleSubmit}
 					className="w-[70vw] lg:w-full">
-					{passCode && content && descriptorsArray
-						? "生成密语"
+					{passCode &&
+					content &&
+					Object.keys(content).length > 0 &&
+					descriptorsArray.length > 0 &&
+					captureStarted !== "processing"
+						? `为 "${passCode}" 生成密语`
 						: "填写以上三项生成密语"}
 				</Button>
 			</CardFooter>

@@ -32,7 +32,7 @@ export const Editor = ({ content, setContent }: EditorProps) => {
 		//   editorClassName="focus:outline-hidden"
 		// />
 		<Dialog>
-			<DialogTrigger asChild >
+			<DialogTrigger asChild>
 				<Button variant="outline" className="m-2 w-full">
 					3.Edit your words...
 				</Button>

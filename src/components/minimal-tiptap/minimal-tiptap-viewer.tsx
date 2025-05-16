@@ -40,7 +40,8 @@ export const MinimalTiptapViewer = ({
 			className={cn(
 				"border-input focus-within:border-primary min-data-[orientation=vertical]:h-72 flex h-auto w-full flex-col rounded-md border shadow-xs",
 				className,
-			)}>
+			)}
+		>
 			<EditorContent
 				editor={editor}
 				className={cn(
